@@ -1,4 +1,5 @@
-mod web_server;
+mod web_server_sync;
+mod web_server_async;
 
 use std::net::TcpListener;
 use pgx::*;
@@ -10,7 +11,7 @@ use pgx::bgworkers::{BackgroundWorker, BackgroundWorkerBuilder, SignalWakeFlags}
 #[pg_guard]
 pub extern "C" fn _PG_init() {
     BackgroundWorkerBuilder::new("Background Web Service")
-        .set_function("run_service")
+        .set_function("run_service_async")
         .set_library("pgx_demo")
         .set_argument(42i32.into_datum())
         .enable_spi_access()
@@ -26,7 +27,7 @@ fn hello_pgx_demo() -> &'static str {
 
 #[pg_guard]
 #[no_mangle]
-pub extern "C" fn run_service(arg: pg_sys::Datum) {
+pub extern "C" fn run_service_sync(arg: pg_sys::Datum) {
     let arg = unsafe { i32::from_datum(arg, false, pg_sys::INT4OID) };
 
     // From the tutorial:
@@ -60,8 +61,17 @@ pub extern "C" fn run_service(arg: pg_sys::Datum) {
 
         let stream = stream.unwrap();
 
-        web_server::handle_connection(stream).expect("TODO: panic message");
+        web_server_sync::handle_connection(stream).expect("TODO: panic message");
     }
+}
+
+#[pg_guard]
+#[no_mangle]
+pub extern "C" fn run_service_async() {
+    BackgroundWorker::attach_signal_handlers(SignalWakeFlags::SIGHUP | SignalWakeFlags::SIGTERM);
+    BackgroundWorker::connect_worker_to_spi(Some("postgres"), None);
+
+    web_server_async::handle_connection().expect("TODO: panic message");
 }
 
 #[cfg(any(test, feature = "pg_test"))]
