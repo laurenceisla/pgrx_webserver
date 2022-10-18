@@ -8,10 +8,11 @@ use pgx::log;
 use pgx::bgworkers::{BackgroundWorker, BackgroundWorkerBuilder, SignalWakeFlags};
 
 // Tutorial: https://github.com/tcdi/pgx/blob/master/pgx-examples/bgworker/src/lib.rs
+// TODO: Verify the --bgworker argument for `cargo pgx new`
 #[pg_guard]
 pub extern "C" fn _PG_init() {
     BackgroundWorkerBuilder::new("Background Web Service")
-        .set_function("run_service_async")
+        .set_function("run_service_sync")
         .set_library("pgx_demo")
         .set_argument(42i32.into_datum())
         .enable_spi_access()
