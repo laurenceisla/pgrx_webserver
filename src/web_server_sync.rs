@@ -64,6 +64,9 @@ pub fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
             ("HTTP/1.1 400 NOT FOUND","SELECT '<h1>404 Not Found from PostgreSQL!</h1>' AS message;")
         };
 
+    // The BackgroundWorker needs to open a transaction in order to call an Spi
+    // See: https://github.com/tcdi/pgx/tree/master/pgx-examples/bgworker
+    // TODO: this should be async (?)
     BackgroundWorker::transaction(|| {
         panic::catch_unwind(move || {
             **wrapper = Spi::get_one::<String>(query).expect("NULL");
